@@ -101,6 +101,8 @@ def minimax(board):
         return None
     current_player = player(board)
     chosen_action = (0, 0)
+    alpha = float("-inf")
+    beta = float("inf")
     if current_player == X:
         value = float("-inf")
     else:
@@ -109,12 +111,14 @@ def minimax(board):
     for action in actions(board):
         new_board = result(board, action)
         if current_player == X:
-            new_value = minValue(new_board)
+            new_value = minValue(new_board, alpha, beta)
+            alpha = max(alpha, new_value)
             if new_value > value:
                 value = new_value
                 chosen_action = action
         if current_player == O:
-            new_value = maxValue(new_board)
+            new_value = maxValue(new_board, alpha, beta)
+            beta = min(beta, new_value)
             if new_value < value:
                 value = new_value
                 chosen_action = action
@@ -122,19 +126,25 @@ def minimax(board):
     return chosen_action
 
 
-def maxValue(board):
+def maxValue(board, alpha, beta):
     if terminal(board):
         return utility(board)
     value = float("-inf")
     for action in actions(board):
-        value = max(value, minValue(result(board, action)))
+        value = max(value, minValue(result(board, action), alpha, beta))
+        alpha = max(alpha, value)
+        if value >= beta:
+            return value
     return value
 
 
-def minValue(board):
+def minValue(board, alpha, beta):
     if terminal(board):
         return utility(board)
     value = float("inf")
     for action in actions(board):
-        value = min(value, maxValue(result(board, action)))
+        value = min(value, maxValue(result(board, action), alpha, beta))
+        beta = min(beta, value)
+        if value <= alpha:
+            return value
     return value

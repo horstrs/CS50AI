@@ -13,9 +13,7 @@ def initial_state():
     """
     Returns starting state of the board.
     """
-    return [[EMPTY, EMPTY, EMPTY],
-            [EMPTY, EMPTY, EMPTY],
-            [EMPTY, EMPTY, EMPTY]]
+    return [[EMPTY, EMPTY, EMPTY], [EMPTY, EMPTY, EMPTY], [EMPTY, EMPTY, EMPTY]]
 
 
 def player(board):
@@ -30,7 +28,14 @@ def actions(board):
     """
     Returns set of all possible actions (i, j) available on the board.
     """
-    possible_actions = set([(row_index, move) for row_index, row in enumerate(board) for move, cell in enumerate(row) if cell == EMPTY])
+    possible_actions = set(
+        [
+            (row_index, move)
+            for row_index, row in enumerate(board)
+            for move, cell in enumerate(row)
+            if cell == EMPTY
+        ]
+    )
     return possible_actions
 
 
@@ -40,7 +45,7 @@ def result(board, action):
     """
     if action not in actions(board):
         raise ValueError("action not possible")
-    
+
     (row, column) = action
     resulting_board = copy.deepcopy(board)
     resulting_board[row][column] = player(board)
@@ -54,7 +59,7 @@ def winner(board):
     rows = board
     cols = [list(col) for col in zip(*board)]
     diag1 = [board[i][i] for i in range(3)]
-    diag2 = [board[i][2-i] for i in range(3)]
+    diag2 = [board[i][2 - i] for i in range(3)]
     lines = rows + cols + [diag1] + [diag2]
     for line in lines:
         player = are_all_cells_same_player(line)
@@ -95,12 +100,12 @@ def minimax(board):
     if terminal(board):
         return None
     current_player = player(board)
-    chosen_action = (0,0)
+    chosen_action = (0, 0)
     if current_player == X:
         value = float("-inf")
     else:
         value = float("inf")
-        
+
     for action in actions(board):
         new_board = result(board, action)
         if current_player == X:
@@ -113,7 +118,7 @@ def minimax(board):
             if new_value < value:
                 value = new_value
                 chosen_action = action
-    
+
     return chosen_action
 
 

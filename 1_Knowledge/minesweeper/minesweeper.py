@@ -197,14 +197,14 @@ class MinesweeperAI:
         mines_in_new_knowledge = new_knowledge.cells.intersection(self.mines)
         for mine in mines_in_new_knowledge:
             self.mark_mine(mine)
-        
+
         self.reason_about_new_knowledge(new_knowledge)
 
     def reason_about_new_knowledge(self, new_knowledge):
         added_knowledge = True
         if len(new_knowledge.cells) == 0:
             return
-        
+
         while added_knowledge:
             added_knowledge = False
             self.clean_up_empty_knowledge()
@@ -233,7 +233,7 @@ class MinesweeperAI:
                 or previous_mines_count != new_mines_count
             ):
                 added_knowledge = True
-                
+
         for existing_knowledge in self.knowledge:
             added_knowledge = False
             if len(existing_knowledge.cells) == 0:
@@ -286,7 +286,7 @@ class MinesweeperAI:
             for j in range(col - 1, col + 2):
                 if j < 0 or j >= self.width:
                     continue
-                if (i, j) not in self.safes: #and (i, j) not in self.mines:
+                if (i, j) not in self.safes:  # and (i, j) not in self.mines:
                     neighbours.add((i, j))
         return neighbours
 
@@ -305,7 +305,7 @@ class MinesweeperAI:
         sentences_to_clean.reverse()
         for i in sentences_to_clean:
             self.knowledge.pop(i)
-    
+
     def check_if_sentence_has_known_mines(self, sentence):
         known_mines_in_sentence = self.mines.intersection(sentence.cells)
         return known_mines_in_sentence

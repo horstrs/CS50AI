@@ -247,5 +247,6 @@ def normalize_characteristic(probabilities, person, characteristic):
         value += delta * proportion
         probabilities[person][characteristic][key] = value
 
+
 if __name__ == "__main__":
     main()

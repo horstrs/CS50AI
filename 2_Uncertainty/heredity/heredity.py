@@ -3,42 +3,22 @@ import itertools
 import sys
 
 PROBS = {
-
     # Unconditional probabilities for having gene
-    "gene": {
-        2: 0.01,
-        1: 0.03,
-        0: 0.96
-    },
-
+    "gene": {2: 0.01, 1: 0.03, 0: 0.96},
     "trait": {
-
         # Probability of trait given two copies of gene
-        2: {
-            True: 0.65,
-            False: 0.35
-        },
-
+        2: {True: 0.65, False: 0.35},
         # Probability of trait given one copy of gene
-        1: {
-            True: 0.56,
-            False: 0.44
-        },
-
+        1: {True: 0.56, False: 0.44},
         # Probability of trait given no gene
-        0: {
-            True: 0.01,
-            False: 0.99
-        }
+        0: {True: 0.01, False: 0.99},
     },
-
     # Mutation probability
-    "mutation": 0.01
+    "mutation": 0.01,
 }
 
 
 def main():
-
     # Check for proper usage
     if len(sys.argv) != 2:
         sys.exit("Usage: python heredity.py data.csv")
@@ -46,28 +26,19 @@ def main():
 
     # Keep track of gene and trait probabilities for each person
     probabilities = {
-        person: {
-            "gene": {
-                2: 0,
-                1: 0,
-                0: 0
-            },
-            "trait": {
-                True: 0,
-                False: 0
-            }
-        }
+        person: {"gene": {2: 0, 1: 0, 0: 0}, "trait": {True: 0, False: 0}}
         for person in people
     }
 
     # Loop over all sets of people who might have the trait
     names = set(people)
     for have_trait in powerset(names):
-
         # Check if current set of people violates known information
         fails_evidence = any(
-            (people[person]["trait"] is not None and
-             people[person]["trait"] != (person in have_trait))
+            (
+                people[person]["trait"] is not None
+                and people[person]["trait"] != (person in have_trait)
+            )
             for person in names
         )
         if fails_evidence:
@@ -76,7 +47,6 @@ def main():
         # Loop over all sets of people who might have the gene
         for one_gene in powerset(names):
             for two_genes in powerset(names - one_gene):
-
                 # Update probabilities with new joint probability
                 p = joint_probability(people, one_gene, two_genes, have_trait)
                 update(probabilities, one_gene, two_genes, have_trait, p)
@@ -110,8 +80,13 @@ def load_data(filename):
                 "name": name,
                 "mother": row["mother"] or None,
                 "father": row["father"] or None,
-                "trait": (True if row["trait"] == "1" else
-                          False if row["trait"] == "0" else None)
+                "trait": (
+                    True
+                    if row["trait"] == "1"
+                    else False
+                    if row["trait"] == "0"
+                    else None
+                ),
             }
     return data
 
@@ -122,7 +97,8 @@ def powerset(s):
     """
     s = list(s)
     return [
-        set(s) for s in itertools.chain.from_iterable(
+        set(s)
+        for s in itertools.chain.from_iterable(
             itertools.combinations(s, r) for r in range(len(s) + 1)
         )
     ]
@@ -139,7 +115,96 @@ def joint_probability(people, one_gene, two_genes, have_trait):
         * everyone in set `have_trait` has the trait, and
         * everyone not in set` have_trait` does not have the trait.
     """
-    raise NotImplementedError
+    joint_probability = 1
+    for person in people:
+        joint_probability *= calculate_prob_for_one_person(
+            people, person, one_gene, two_genes, have_trait
+        )
+
+    return joint_probability
+
+
+def calculate_prob_for_one_person(people, person, one_gene, two_genes, have_trait):
+    gene_count = get_gene_count(person, one_gene, two_genes)
+
+    if people[person]["mother"]:
+        gene_count_prob = prob_gene_inheritance(
+            people, person, one_gene, two_genes, gene_count
+        )
+    else:
+        gene_count_prob = PROBS["gene"][gene_count]
+
+    trait_value = True if person in have_trait else False
+    trait_prob = PROBS["trait"][gene_count][trait_value]
+    person_prob = gene_count_prob * trait_prob
+    return person_prob
+
+
+def prob_gene_inheritance(people, person, one_gene, two_genes, gene_count):
+    father_gene_count = get_gene_count(
+        people.get(person).get("father"), one_gene, two_genes
+    )
+    mother_gene_count = get_gene_count(
+        people.get(person).get("mother"), one_gene, two_genes
+    )
+    if gene_count == 2:
+        return prob_both(father_gene_count, mother_gene_count)
+    elif gene_count == 1:
+        return prob_father_only(
+            father_gene_count, mother_gene_count
+        ) + prob_mother_only(father_gene_count, mother_gene_count)
+    else:
+        return prob_none(father_gene_count, mother_gene_count)
+
+
+def calculate_chance_parent_to_pass(parent_gene_count):
+    if parent_gene_count == 2:
+        return 1 - PROBS["mutation"]
+    if parent_gene_count == 0:
+        return PROBS["mutation"]
+    if parent_gene_count == 1:
+        return 0.5
+
+
+def calculate_chance_parent_to_not_pass(parent_gene_count):
+    if parent_gene_count == 2:
+        return PROBS["mutation"]
+    if parent_gene_count == 0:
+        return 1 - PROBS["mutation"]
+    if parent_gene_count == 1:
+        return 0.5
+
+
+def prob_both(father_gene_count, mother_gene_count):
+    father_prob = calculate_chance_parent_to_pass(father_gene_count)
+    mother_prob = calculate_chance_parent_to_pass(mother_gene_count)
+    return father_prob * mother_prob
+
+
+def prob_father_only(father_gene_count, mother_gene_count):
+    father_prob = calculate_chance_parent_to_pass(father_gene_count)
+    mother_prob = calculate_chance_parent_to_not_pass(mother_gene_count)
+    return father_prob * mother_prob
+
+
+def prob_mother_only(father_gene_count, mother_gene_count):
+    mother_prob = calculate_chance_parent_to_pass(mother_gene_count)
+    father_prob = calculate_chance_parent_to_not_pass(father_gene_count)
+    return mother_prob * father_prob
+
+
+def prob_none(father_gene_count, mother_gene_count):
+    father_prob = calculate_chance_parent_to_not_pass(father_gene_count)
+    mother_prob = calculate_chance_parent_to_not_pass(mother_gene_count)
+    return father_prob * mother_prob
+
+
+def get_gene_count(person, one_gene, two_genes):
+    if person in one_gene:
+        return 1
+    if person in two_genes:
+        return 2
+    return 0
 
 
 def update(probabilities, one_gene, two_genes, have_trait, p):
@@ -149,7 +214,17 @@ def update(probabilities, one_gene, two_genes, have_trait, p):
     Which value for each distribution is updated depends on whether
     the person is in `have_gene` and `have_trait`, respectively.
     """
-    raise NotImplementedError
+    for person in probabilities:
+        if person in one_gene:
+            probabilities[person]["gene"][1] += p
+        elif person in two_genes:
+            probabilities[person]["gene"][2] += p
+        else:
+            probabilities[person]["gene"][0] += p
+        if person in have_trait:
+            probabilities[person]["trait"][True] += p
+        else:
+            probabilities[person]["trait"][False] += p
 
 
 def normalize(probabilities):
@@ -157,8 +232,20 @@ def normalize(probabilities):
     Update `probabilities` such that each probability distribution
     is normalized (i.e., sums to 1, with relative proportions the same).
     """
-    raise NotImplementedError
+    for person in probabilities:
+        normalize_characteristic(probabilities, person, "gene")
+        normalize_characteristic(probabilities, person, "trait")
 
+
+def normalize_characteristic(probabilities, person, characteristic):
+    characteristic_chance = 0
+    for value in probabilities[person][characteristic].values():
+        characteristic_chance += value
+    delta = 1 - characteristic_chance
+    for key, value in probabilities[person][characteristic].items():
+        proportion = value / characteristic_chance
+        value += delta * proportion
+        probabilities[person][characteristic][key] = value
 
 if __name__ == "__main__":
     main()

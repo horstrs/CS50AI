@@ -144,17 +144,16 @@ class CrosswordCreator:
         Return True if arc consistency is enforced and no domains are empty;
         return False if one or more domains end up empty.
         """
-        if not arcs:
-            arcs = self.crossword.overlaps
+        if arcs is None:
+            arcs = list(self.crossword.overlaps)
         while arcs:
-            arc_to_check = arcs.popitem()
-            vars, overlap_maybe = arc_to_check
-            x, y = vars
+            x, y = arcs.pop()
             if self.revise(x, y):
                 if not self.domains[x]:
                     return False
                 for z in self.crossword.neighbors(x):
-                    arcs.push(z, x)
+                    if z is not y:
+                        arcs.append((z, x))
         return True
 
     def assignment_complete(self, assignment):
@@ -172,8 +171,8 @@ class CrosswordCreator:
         Return True if `assignment` is consistent (i.e., words fit in crossword
         puzzle without conflicting characters); return False otherwise.
         """
-        if not self.assignment_complete(assignment):
-            return False
+        # if not self.assignment_complete(assignment):
+        #     return False
 
         all_words = assignment.values()
         unique_words = set(all_words)
@@ -184,11 +183,11 @@ class CrosswordCreator:
             if len(word) != variable.length:
                 return False
             for neighbor in self.crossword.neighbors(variable):
-                overlap = self.crossword.overlaps.get(variable, neighbor)
+                overlap = self.crossword.overlaps.get((variable, neighbor))
                 if overlap:
                     i, j = overlap
                     neighbor_word = assignment.get(neighbor)
-                    if word[i] != neighbor_word[j]:
+                    if neighbor_word and word[i] != neighbor_word[j]:
                         return False
 
         return True

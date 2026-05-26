@@ -3,16 +3,14 @@ import sys
 from crossword import *
 
 
-class CrosswordCreator():
-
+class CrosswordCreator:
     def __init__(self, crossword):
         """
         Create new CSP crossword generate.
         """
         self.crossword = crossword
         self.domains = {
-            var: self.crossword.words.copy()
-            for var in self.crossword.variables
+            var: self.crossword.words.copy() for var in self.crossword.variables
         }
 
     def letter_grid(self, assignment):
@@ -49,6 +47,7 @@ class CrosswordCreator():
         Save crossword assignment to an image file.
         """
         from PIL import Image, ImageDraw, ImageFont
+
         cell_size = 100
         cell_border = 2
         interior_size = cell_size - 2 * cell_border
@@ -57,30 +56,33 @@ class CrosswordCreator():
         # Create a blank canvas
         img = Image.new(
             "RGBA",
-            (self.crossword.width * cell_size,
-             self.crossword.height * cell_size),
-            "black"
+            (self.crossword.width * cell_size, self.crossword.height * cell_size),
+            "black",
         )
         font = ImageFont.truetype("assets/fonts/OpenSans-Regular.ttf", 80)
         draw = ImageDraw.Draw(img)
 
         for i in range(self.crossword.height):
             for j in range(self.crossword.width):
-
                 rect = [
-                    (j * cell_size + cell_border,
-                     i * cell_size + cell_border),
-                    ((j + 1) * cell_size - cell_border,
-                     (i + 1) * cell_size - cell_border)
+                    (j * cell_size + cell_border, i * cell_size + cell_border),
+                    (
+                        (j + 1) * cell_size - cell_border,
+                        (i + 1) * cell_size - cell_border,
+                    ),
                 ]
                 if self.crossword.structure[i][j]:
                     draw.rectangle(rect, fill="white")
                     if letters[i][j]:
                         _, _, w, h = draw.textbbox((0, 0), letters[i][j], font=font)
                         draw.text(
-                            (rect[0][0] + ((interior_size - w) / 2),
-                             rect[0][1] + ((interior_size - h) / 2) - 10),
-                            letters[i][j], fill="black", font=font
+                            (
+                                rect[0][0] + ((interior_size - w) / 2),
+                                rect[0][1] + ((interior_size - h) / 2) - 10,
+                            ),
+                            letters[i][j],
+                            fill="black",
+                            font=font,
                         )
 
         img.save(filename)
@@ -99,7 +101,12 @@ class CrosswordCreator():
         (Remove any values that are inconsistent with a variable's unary
          constraints; in this case, the length of the word.)
         """
-        raise NotImplementedError
+
+        for variable, domain_words in self.domains.items():
+            discarded_words = {word for word in domain_words if len(word) != variable.length}
+            for word in discarded_words:
+                self.domains[variable].remove(word)
+
 
     def revise(self, x, y):
         """
@@ -110,7 +117,23 @@ class CrosswordCreator():
         Return True if a revision was made to the domain of `x`; return
         False if no revision was made.
         """
-        raise NotImplementedError
+        revised = False
+        overlap = self.crossword.overlaps.get((x, y))
+        if not overlap:
+            return revised
+
+        i, j = overlap
+
+        x_domain = self.domains[x]
+        y_domain = self.domains[y]
+
+        overlap_letters = {word[j] for word in y_domain}
+        valid_x_words = {word for word in x_domain if word[i] in overlap_letters}
+
+        if len(valid_x_words) != len(x_domain):
+            self.domains[x] = valid_x_words
+            revised = True
+        return revised
 
     def ac3(self, arcs=None):
         """
@@ -121,21 +144,54 @@ class CrosswordCreator():
         Return True if arc consistency is enforced and no domains are empty;
         return False if one or more domains end up empty.
         """
-        raise NotImplementedError
+        if not arcs:
+            arcs = self.crossword.overlaps
+        while arcs:
+            arc_to_check = arcs.popitem()
+            vars, overlap_maybe = arc_to_check
+            x, y = vars
+            if self.revise(x, y):
+                if not self.domains[x]:
+                    return False
+                for z in self.crossword.neighbors(x):
+                    arcs.push(z, x)
+        return True
 
     def assignment_complete(self, assignment):
         """
         Return True if `assignment` is complete (i.e., assigns a value to each
         crossword variable); return False otherwise.
         """
-        raise NotImplementedError
+        for variable in self.crossword.variables:
+            if variable not in assignment:
+                return False
+        return True
 
     def consistent(self, assignment):
         """
         Return True if `assignment` is consistent (i.e., words fit in crossword
         puzzle without conflicting characters); return False otherwise.
         """
-        raise NotImplementedError
+        if not self.assignment_complete(assignment):
+            return False
+
+        all_words = assignment.values()
+        unique_words = set(all_words)
+        if len(all_words) != len(unique_words):
+            return False
+
+        for variable, word in assignment.items():
+            if len(word) != variable.length:
+                return False
+            for neighbor in self.crossword.neighbors(variable):
+                overlap = self.crossword.overlaps.get(variable, neighbor)
+                if overlap:
+                    i, j = overlap
+                    neighbor_word = assignment.get(neighbor)
+                    if word[i] != neighbor_word[j]:
+                        return False
+
+        return True
 
     def order_domain_values(self, var, assignment):
         """
@@ -144,7 +200,9 @@ class CrosswordCreator():
         The first value in the list, for example, should be the one
         that rules out the fewest values among the neighbors of `var`.
         """
-        raise NotImplementedError
+        ordered_values = self.domains[var]
+        # TODO: Finish sorting implementation
+        return ordered_values
 
     def select_unassigned_variable(self, assignment):
         """
@@ -154,7 +212,10 @@ class CrosswordCreator():
         degree. If there is a tie, any of the tied variables are acceptable
         return values.
         """
-        raise NotImplementedError
+        for variable in self.crossword.variables:
+            if variable not in assignment:
+                return variable
+        # TODO: Finish sorting implementation
 
     def backtrack(self, assignment):
         """
@@ -165,11 +226,23 @@ class CrosswordCreator():
 
         If no assignment is possible, return None.
         """
-        raise NotImplementedError
+        if self.assignment_complete(assignment):
+            return assignment
+        variable = self.select_unassigned_variable(assignment)
+        for value in self.domains[variable]:
+            assignment[variable] = value
+            if self.consistent(assignment):
+                result = self.backtrack(assignment)
+                if result:
+                    return result
+            assignment.pop(
+                variable
+            )  # If we got here, it's not consistent at some point. Pop and let it try next
+
+        return None  # If we got here, then we're not able to assign any value to the given variable and thus it's not solvable
 
 
 def main():
-
     # Check usage
     if len(sys.argv) not in [3, 4]:
         sys.exit("Usage: python generate.py structure words [output]")

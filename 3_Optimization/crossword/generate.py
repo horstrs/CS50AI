@@ -103,10 +103,11 @@ class CrosswordCreator:
         """
 
         for variable, domain_words in self.domains.items():
-            discarded_words = {word for word in domain_words if len(word) != variable.length}
+            discarded_words = {
+                word for word in domain_words if len(word) != variable.length
+            }
             for word in discarded_words:
                 self.domains[variable].remove(word)
-
 
     def revise(self, x, y):
         """
@@ -199,9 +200,21 @@ class CrosswordCreator:
         The first value in the list, for example, should be the one
         that rules out the fewest values among the neighbors of `var`.
         """
-        ordered_values = self.domains[var]
-        # TODO: Finish sorting implementation
-        return ordered_values
+        candidates_with_n = [
+            (
+                candidate,
+                sum(
+                    1
+                    for neighbor in self.crossword.neighbors(var)
+                    if neighbor not in assignment
+                    and candidate in self.domains[neighbor]
+                    #TODO: Fix domain overlap
+                ),
+            )
+            for candidate in self.domains[var]
+        ]
+        candidates_with_n.sort(key=lambda item: item[1])
+        return [candidate for candidate, _ in candidates_with_n]
 
     def select_unassigned_variable(self, assignment):
         """
@@ -211,10 +224,19 @@ class CrosswordCreator:
         degree. If there is a tie, any of the tied variables are acceptable
         return values.
         """
-        for variable in self.crossword.variables:
-            if variable not in assignment:
-                return variable
-        # TODO: Finish sorting implementation
+        unassigned_var_sorted = [
+            (
+                variable,
+                len(self.domains[variable]),
+                len(self.crossword.neighbors(variable))
+            )
+            for variable in self.crossword.variables
+            if variable not in assignment
+        ]
+        sorted_tupples = sorted(unassigned_var_sorted, key=lambda item: (item[1], -item[2]))
+        sorted_list = [item[0] for item in sorted_tupples]
+        return sorted_list[0]
+        
 
     def backtrack(self, assignment):
         """

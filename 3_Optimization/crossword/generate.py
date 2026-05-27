@@ -200,19 +200,23 @@ class CrosswordCreator:
         The first value in the list, for example, should be the one
         that rules out the fewest values among the neighbors of `var`.
         """
-        candidates_with_n = [
-            (
-                candidate,
-                sum(
-                    1
-                    for neighbor in self.crossword.neighbors(var)
-                    if neighbor not in assignment
-                    and candidate in self.domains[neighbor]
-                    #TODO: Fix domain overlap
-                ),
-            )
-            for candidate in self.domains[var]
-        ]
+        candidates_with_n = []
+        for neighbor in self.crossword.neighbors(var):
+            if neighbor in assignment:
+                continue
+            var_i, neighbor_j = self.crossword.overlaps.get((var, neighbor))
+            for candidate in self.domains[var]:
+                candidate_ith_letter = candidate[var_i]
+                candidates_with_n.append(
+                    (
+                        candidate,
+                        sum(
+                            1
+                            for neighbor_word in self.domains[neighbor]
+                            if neighbor_word[neighbor_j] != candidate_ith_letter
+                        ),
+                    )
+                )
         candidates_with_n.sort(key=lambda item: item[1])
         return [candidate for candidate, _ in candidates_with_n]
 
@@ -228,15 +232,16 @@ class CrosswordCreator:
             (
                 variable,
                 len(self.domains[variable]),
-                len(self.crossword.neighbors(variable))
+                len(self.crossword.neighbors(variable)),
             )
             for variable in self.crossword.variables
             if variable not in assignment
         ]
-        sorted_tupples = sorted(unassigned_var_sorted, key=lambda item: (item[1], -item[2]))
+        sorted_tupples = sorted(
+            unassigned_var_sorted, key=lambda item: (item[1], -item[2])
+        )
         sorted_list = [item[0] for item in sorted_tupples]
         return sorted_list[0]
-        
 
     def backtrack(self, assignment):
         """

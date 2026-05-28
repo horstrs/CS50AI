@@ -142,18 +142,18 @@ def evaluate(labels, predictions):
     for label, prediction in zip(labels, predictions):
         if label == 1:
             total_labeled_positive += 1
-            if prediction  == 1:
+            if prediction == 1:
                 correct_positive += 1
         else:
             total_labeled_negative += 1
             if prediction == 0:
                 correct_negative += 1
 
-    
     sensitivity = correct_positive / total_labeled_positive
     specificity = correct_negative / total_labeled_negative
 
     return (sensitivity, specificity)
+
 
 if __name__ == "__main__":
     main()
